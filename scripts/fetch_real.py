@@ -1,6 +1,6 @@
 # Fetch REAL data from Yahoo Finance chart API (no auth needed):
-#   - daily bars:  interval=1d, range=1y   (~250 bars)
-#   - hourly bars: interval=1h, range=3mo  (~440 bars, US sessions)
+#   - daily bars:  interval=1d, range=3y   (~750 bars)
+#   - hourly bars: interval=1h, range=1y   (~1700 bars, US sessions)
 # Writes src/data/stocks.json in the exact schema the app already consumes.
 # Universe = current NQ100 + DJIA constituents (scripts/index_members.json),
 # plus the original watchlist. Sector / market cap are static metadata.
@@ -68,9 +68,9 @@ META = build_meta()
 print(f"universe: {len(META)} tickers")
 for tk, (name, sector, mcap) in META:
     try:
-        daily = fetch(tk, "1d", "1y")
+        daily = fetch(tk, "1d", "3y")
         time.sleep(0.35)
-        hourly = fetch(tk, "1h", "3mo")
+        hourly = fetch(tk, "1h", "1y")
         time.sleep(0.35)
         if len(daily) < 100 or len(hourly) < 100:
             raise ValueError(f"too few bars: daily={len(daily)} hourly={len(hourly)}")

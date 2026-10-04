@@ -42,6 +42,9 @@ export function CandleChart({ bars, showBars = 120, entry, stop, target, height 
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [mouseY, setMouseY] = useState<number | null>(null);
+  const [showMA, setShowMA] = useState(true);
+  const [showBB, setShowBB] = useState(true);
+  const [showKC, setShowKC] = useState(true);
   const dragRef = useRef<{ x: number; moved: boolean } | null>(null);
 
   const data = useMemo(() => bars.slice(-showBars), [bars, showBars]);
@@ -185,8 +188,8 @@ export function CandleChart({ bars, showBars = 120, entry, stop, target, height 
               {((hb.c / hb.o - 1) * 100).toFixed(2)}%
             </span>
             <span className="text-zinc-500">量 <b className="text-zinc-200">{(hb.v / 1e6).toFixed(2)}M</b></span>
-            {ma20[hover] !== null && <span className="text-yellow-500/90">MA20 {ma20[hover]!.toFixed(2)}</span>}
-            {ma50[hover] !== null && <span className="text-violet-400">MA50 {ma50[hover]!.toFixed(2)}</span>}
+            {showMA && ma20[hover] !== null && <span className="text-yellow-500/90">MA20 {ma20[hover]!.toFixed(2)}</span>}
+            {showMA && ma50[hover] !== null && <span className="text-violet-400">MA50 {ma50[hover]!.toFixed(2)}</span>}
             {macdData.hist[hover] !== null && (
               <span className="text-zinc-500">
                 MACD <b className={macdData.hist[hover]! >= 0 ? "text-emerald-400" : "text-red-400"}>{macdData.hist[hover]!.toFixed(3)}</b>
@@ -196,6 +199,20 @@ export function CandleChart({ bars, showBars = 120, entry, stop, target, height 
         ) : (
           <span className="text-zinc-600">滑鼠移動查看數據 · 滾輪縮放 · 按住拖拽平移</span>
         )}
+        <span className="flex items-center gap-1 mr-auto sm:mr-0">
+          <button onClick={() => setShowMA(!showMA)} title="均線開關"
+            className={`px-1.5 py-0.5 rounded border text-[10px] ${showMA ? "border-yellow-500/40 text-yellow-400 bg-yellow-500/10" : "border-zinc-800 text-zinc-600"}`}>
+            MA
+          </button>
+          <button onClick={() => setShowBB(!showBB)} title="保力加通道開關"
+            className={`px-1.5 py-0.5 rounded border text-[10px] ${showBB ? "border-amber-500/40 text-amber-400 bg-amber-500/10" : "border-zinc-800 text-zinc-600"}`}>
+            BB
+          </button>
+          <button onClick={() => setShowKC(!showKC)} title="Keltner 通道開關"
+            className={`px-1.5 py-0.5 rounded border text-[10px] ${showKC ? "border-sky-500/40 text-sky-400 bg-sky-500/10" : "border-zinc-800 text-zinc-600"}`}>
+            KC
+          </button>
+        </span>
         <span className="ml-auto flex items-center gap-1">
           {zoomed && <span className="text-sky-400 mr-1">{win.count} 根</span>}
           <button onClick={() => zoomAt(0.5, 1)} className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" title="放大">
@@ -231,23 +248,31 @@ export function CandleChart({ bars, showBars = 120, entry, stop, target, height 
         ))}
 
         {/* KC band fill + BB/KC lines */}
-        {(() => {
-          let d = "";
-          let started = false;
-          const seg = (v: number | null, i: number) => {
-            if (v === null) return;
-            d += `${started ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
-            started = true;
-          };
-          kc.upper.forEach(seg);
-          for (let i = kc.lower.length - 1; i >= 0; i--) seg(kc.lower[i], i);
-          return <path d={`${d} Z`} fill="rgba(56,189,248,0.07)" stroke="none" />;
-        })()}
-        <path d={linePath(kc.upper, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
-        <path d={linePath(kc.lower, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
-        <path d={linePath(bb.upper, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
-        <path d={linePath(bb.lower, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
-        <path d={linePath(bb.mid, y)} fill="none" stroke="#f59e0b" strokeWidth="0.7" strokeDasharray="3 3" opacity={0.5} />
+        {showKC && (
+          <>
+            {(() => {
+              let d = "";
+              let started = false;
+              const seg = (v: number | null, i: number) => {
+                if (v === null) return;
+                d += `${started ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+                started = true;
+              };
+              kc.upper.forEach(seg);
+              for (let i = kc.lower.length - 1; i >= 0; i--) seg(kc.lower[i], i);
+              return <path d={`${d} Z`} fill="rgba(56,189,248,0.07)" stroke="none" />;
+            })()}
+            <path d={linePath(kc.upper, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
+            <path d={linePath(kc.lower, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
+          </>
+        )}
+        {showBB && (
+          <>
+            <path d={linePath(bb.upper, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
+            <path d={linePath(bb.lower, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
+            <path d={linePath(bb.mid, y)} fill="none" stroke="#f59e0b" strokeWidth="0.7" strokeDasharray="3 3" opacity={0.5} />
+          </>
+        )}
 
         {/* volume */}
         {visible.map((b, i) => {
@@ -285,8 +310,12 @@ export function CandleChart({ bars, showBars = 120, entry, stop, target, height 
         })}
 
         {/* MAs */}
-        <path d={linePath(ma20, y)} fill="none" stroke="#facc15" strokeWidth="1.1" opacity={0.85} />
-        <path d={linePath(ma50, y)} fill="none" stroke="#a78bfa" strokeWidth="1.1" opacity={0.85} />
+        {showMA && (
+          <>
+            <path d={linePath(ma20, y)} fill="none" stroke="#facc15" strokeWidth="1.1" opacity={0.85} />
+            <path d={linePath(ma50, y)} fill="none" stroke="#a78bfa" strokeWidth="1.1" opacity={0.85} />
+          </>
+        )}
 
         {/* 缠论: 中枢 + 分型 + 买卖点 */}
         {chan && <ChanOverlay chan={chan} base={bars.length - showBars + visOff} count={visible.length} x={x} y={y} />}

@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import type { StockAnalysis } from "@/lib/types";
 import { STRATEGY_META } from "@/lib/engine";
 import { fmtPct, fmtPrice } from "@/lib/indicators";
+import { analyzeHourly } from "@/lib/hourly";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CandleChart } from "./CandleChart";
+import { HourlyChart } from "./HourlyChart";
 import { CircleDollarSign, CalendarClock, Play, ArrowLeft } from "lucide-react";
 
 interface Props {
@@ -30,6 +32,9 @@ function Ind({ label, value, tone }: { label: string; value: string; tone?: "up"
 export function StockSheet({ stock, onClose, onAddToJournal }: Props) {
   const [capital, setCapital] = useState(10000);
   const [riskPct, setRiskPct] = useState(1);
+  const [view, setView] = useState<"daily" | "hourly">("daily");
+
+  const hourly = useMemo(() => (stock ? analyzeHourly(stock.raw) : null), [stock]);
 
   const calc = useMemo(() => {
     if (!stock || stock.plan.riskPerShare <= 0) return null;
@@ -76,8 +81,22 @@ export function StockSheet({ stock, onClose, onAddToJournal }: Props) {
 
         <div className="space-y-5">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
-            <div className="flex items-center justify-between mb-1 px-1">
-              <span className="text-[11px] text-zinc-500">日线 · 近 120 个交易日</span>
+            <div className="flex items-center justify-between mb-1 px-1 flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex rounded-lg border border-zinc-700 overflow-hidden text-[11px]">
+                  <button onClick={() => setView("daily")}
+                    className={`px-3 py-1 font-medium transition-colors ${view === "daily" ? "bg-sky-600 text-white" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"}`}>
+                    日线
+                  </button>
+                  <button onClick={() => setView("hourly")}
+                    className={`px-3 py-1 font-medium transition-colors ${view === "hourly" ? "bg-sky-600 text-white" : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"}`}>
+                    小时线
+                  </button>
+                </div>
+                <span className="text-[11px] text-zinc-500">
+                  {view === "daily" ? `近 ${Math.min(250, stock.raw.bars.length)} 个交易日（可縮放至 3 年）` : `近 ${Math.min(200, stock.raw.hourly.length)} 个小时（可縮放至 1 年）`}
+                </span>
+              </div>
               <div className="flex gap-3 text-[11px] flex-wrap">
                 <span className="text-yellow-400">— MA20</span>
                 <span className="text-violet-400">— MA50</span>
@@ -88,7 +107,11 @@ export function StockSheet({ stock, onClose, onAddToJournal }: Props) {
                 <span className="text-teal-400">▲一卖/二卖</span>
               </div>
             </div>
-            <CandleChart bars={stock.raw.bars} showBars={120} entry={p.rr > 0 ? p.entry : undefined} stop={p.rr > 0 ? p.stop : undefined} target={p.rr > 0 ? p.target : undefined} height={480} chan={stock.chan} />
+            {view === "daily" ? (
+              <CandleChart bars={stock.raw.bars} showBars={250} entry={p.rr > 0 ? p.entry : undefined} stop={p.rr > 0 ? p.stop : undefined} target={p.rr > 0 ? p.target : undefined} height={480} chan={stock.chan} />
+            ) : hourly ? (
+              <HourlyChart bars={hourly.bars} showBars={200} chan={hourly.chan} height={480} />
+            ) : null}
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">

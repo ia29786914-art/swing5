@@ -41,6 +41,9 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [mouseY, setMouseY] = useState<number | null>(null);
+  const [showMA, setShowMA] = useState(true);
+  const [showBB, setShowBB] = useState(true);
+  const [showKC, setShowKC] = useState(true);
   const dragRef = useRef<{ x: number; moved: boolean } | null>(null);
 
   const data = useMemo(() => bars.slice(-showBars), [bars, showBars]);
@@ -176,7 +179,7 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
               {((hb.c / hb.o - 1) * 100).toFixed(2)}%
             </span>
             <span className="text-zinc-500">量 <b className="text-zinc-200">{(hb.v / 1e3).toFixed(0)}K</b></span>
-            {bb.upper[hover] !== null && (
+            {showBB && bb.upper[hover] !== null && (
               <span className="text-amber-500/90">
                 %BB {(((hb.c - bb.lower[hover]!) / ((bb.upper[hover]! - bb.lower[hover]!) || 1)) * 100).toFixed(0)}%
               </span>
@@ -190,6 +193,20 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
         ) : (
           <span className="text-zinc-600">滑鼠移動查看數據 · 滾輪縮放 · 按住拖拽平移</span>
         )}
+        <span className="flex items-center gap-1 mr-auto sm:mr-0">
+          <button onClick={() => setShowMA(!showMA)} title="均線開關"
+            className={`px-1.5 py-0.5 rounded border text-[10px] ${showMA ? "border-yellow-500/40 text-yellow-400 bg-yellow-500/10" : "border-zinc-800 text-zinc-600"}`}>
+            MA
+          </button>
+          <button onClick={() => setShowBB(!showBB)} title="保力加通道開關"
+            className={`px-1.5 py-0.5 rounded border text-[10px] ${showBB ? "border-amber-500/40 text-amber-400 bg-amber-500/10" : "border-zinc-800 text-zinc-600"}`}>
+            BB
+          </button>
+          <button onClick={() => setShowKC(!showKC)} title="Keltner 通道開關"
+            className={`px-1.5 py-0.5 rounded border text-[10px] ${showKC ? "border-sky-500/40 text-sky-400 bg-sky-500/10" : "border-zinc-800 text-zinc-600"}`}>
+            KC
+          </button>
+        </span>
         <span className="ml-auto flex items-center gap-1">
           {zoomed && <span className="text-sky-400 mr-1">{win.count} 根</span>}
           <button onClick={() => zoomAt(0.5, 1)} className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800" title="放大">
@@ -214,25 +231,33 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
         onMouseUp={() => { dragRef.current = null; }}
         onMouseLeave={() => { dragRef.current = null; setHover(null); setMouseY(null); }}
       >
-        {/* KC band fill */}
-        {(() => {
-          let d = "";
-          let started = false;
-          const seg = (v: number | null, i: number) => {
-            if (v === null) return;
-            d += `${started ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
-            started = true;
-          };
-          kc.upper.forEach(seg);
-          for (let i = kc.lower.length - 1; i >= 0; i--) seg(kc.lower[i], i);
-          return <path d={`${d} Z`} fill="rgba(56,189,248,0.06)" stroke="none" />;
-        })()}
-        <path d={path(kc.upper, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
-        <path d={path(kc.lower, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
+        {/* KC band fill + lines */}
+        {showKC && (
+          <>
+            {(() => {
+              let d = "";
+              let started = false;
+              const seg = (v: number | null, i: number) => {
+                if (v === null) return;
+                d += `${started ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+                started = true;
+              };
+              kc.upper.forEach(seg);
+              for (let i = kc.lower.length - 1; i >= 0; i--) seg(kc.lower[i], i);
+              return <path d={`${d} Z`} fill="rgba(56,189,248,0.06)" stroke="none" />;
+            })()}
+            <path d={path(kc.upper, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
+            <path d={path(kc.lower, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
+          </>
+        )}
         {/* BB */}
-        <path d={path(bb.upper, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
-        <path d={path(bb.lower, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
-        <path d={path(bb.mid, y)} fill="none" stroke="#f59e0b" strokeWidth="0.7" strokeDasharray="3 3" opacity={0.5} />
+        {showBB && (
+          <>
+            <path d={path(bb.upper, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
+            <path d={path(bb.lower, y)} fill="none" stroke="#f59e0b" strokeWidth="0.9" opacity={0.85} />
+            <path d={path(bb.mid, y)} fill="none" stroke="#f59e0b" strokeWidth="0.7" strokeDasharray="3 3" opacity={0.5} />
+          </>
+        )}
 
         {/* price gridlines */}
         {[min, min + span / 2, max].map((p) => (
@@ -269,8 +294,12 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
         })}
 
         {/* MAs */}
-        <path d={path(ma20, y)} fill="none" stroke="#facc15" strokeWidth="1" opacity={0.85} />
-        <path d={path(ma50, y)} fill="none" stroke="#a78bfa" strokeWidth="1" opacity={0.85} />
+        {showMA && (
+          <>
+            <path d={path(ma20, y)} fill="none" stroke="#facc15" strokeWidth="1" opacity={0.85} />
+            <path d={path(ma50, y)} fill="none" stroke="#a78bfa" strokeWidth="1" opacity={0.85} />
+          </>
+        )}
 
         {/* 缠论: 中枢 + 分型 + 买卖点 */}
         {chan && <ChanOverlay chan={chan} base={bars.length - showBars + visOff} count={visible.length} x={x} y={y} />}
