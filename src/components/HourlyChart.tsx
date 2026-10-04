@@ -92,8 +92,18 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
   const x = (i: number) => pad.l + (i + 0.5) * step;
   const bw = Math.max(1.2, step * 0.6);
 
-  const path = (arr: (number | null)[], yy: (v: number) => number) =>
-    arr.map((v, i) => (v === null ? null : `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${yy(v).toFixed(1)}`)).filter(Boolean).join(" ");
+  const path = (arr: (number | null)[], yy: (v: number) => number) => {
+    let started = false;
+    return arr
+      .map((v, i) => {
+        if (v === null) return null;
+        const cmd = started ? "L" : "M"; // path 必須以 M 起頭，否則瀏覽器整條不畫
+        started = true;
+        return `${cmd}${x(i).toFixed(1)},${yy(v).toFixed(1)}`;
+      })
+      .filter(Boolean)
+      .join(" ");
+  };
 
   const macdVals = [...(macdData.line.filter((v) => v !== null) as number[]), ...(macdData.signal.filter((v) => v !== null) as number[])];
   const mMax = Math.max(...macdVals.map(Math.abs), 1e-9);
@@ -207,11 +217,14 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
         {/* KC band fill */}
         {(() => {
           let d = "";
-          kc.upper.forEach((v, i) => { if (v !== null) d += `L${x(i).toFixed(1)},${y(v).toFixed(1)}`; });
-          for (let i = kc.lower.length - 1; i >= 0; i--) {
-            const v = kc.lower[i];
-            if (v !== null) d += `L${x(i).toFixed(1)},${y(v).toFixed(1)}`;
-          }
+          let started = false;
+          const seg = (v: number | null, i: number) => {
+            if (v === null) return;
+            d += `${started ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+            started = true;
+          };
+          kc.upper.forEach(seg);
+          for (let i = kc.lower.length - 1; i >= 0; i--) seg(kc.lower[i], i);
           return <path d={`${d} Z`} fill="rgba(56,189,248,0.06)" stroke="none" />;
         })()}
         <path d={path(kc.upper, y)} fill="none" stroke="#0ea5e9" strokeWidth="0.9" opacity={0.7} />
