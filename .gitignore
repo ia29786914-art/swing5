@@ -1,0 +1,6 @@
+node_modules
+dist
+scripts/*.mjs
+scripts/*.bundle.mjs
+*.local
+.DS_Store
