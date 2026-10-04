@@ -6,6 +6,8 @@ export interface Bar {
   l: number;
   c: number;
   v: number;
+  /** Unix 秒級時間戳（Yahoo 數據）；舊數據可能缺失 */
+  t?: number;
 }
 
 export interface StockRaw {

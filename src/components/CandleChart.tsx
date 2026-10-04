@@ -52,7 +52,17 @@ export function CandleChart({ bars, showBars = 120, entry, stop, target, height 
   const visible = data.slice(win.start, win.end);
   const visOff = win.start;
 
-  const datesAll = useMemo(() => barDates(data.length, bars.length - data.length), [data.length, bars.length]);
+  // 優先用 K 線真實時間戳（美東時間），缺失時退回近似推算
+  const datesAll = useMemo(() => {
+    if (data.some((b) => b.t !== undefined)) {
+      return data.map((b) =>
+        b.t !== undefined
+          ? new Date(b.t * 1000).toLocaleDateString("zh-CN", { timeZone: "America/New_York", month: "numeric", day: "numeric" })
+          : ""
+      );
+    }
+    return barDates(data.length, bars.length - data.length);
+  }, [data, bars.length]);
   const dates = datesAll.slice(visOff, win.end);
 
   const W = 720;

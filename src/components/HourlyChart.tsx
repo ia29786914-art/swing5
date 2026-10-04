@@ -51,7 +51,17 @@ export function HourlyChart({ bars, showBars = 120, chan, height = 340 }: Props)
   const visible = data.slice(win.start, win.end);
   const visOff = win.start;
 
-  const labelsAll = useMemo(() => hourLabels(data.length, bars.length - data.length), [data.length, bars.length]);
+  // 優先用 K 線真實時間戳（美東時間），缺失時退回近似推算
+  const labelsAll = useMemo(() => {
+    if (data.some((b) => b.t !== undefined)) {
+      return data.map((b) =>
+        b.t !== undefined
+          ? new Date(b.t * 1000).toLocaleString("zh-CN", { timeZone: "America/New_York", month: "numeric", day: "numeric", hour: "2-digit", hour12: false })
+          : ""
+      );
+    }
+    return hourLabels(data.length, bars.length - data.length);
+  }, [data, bars.length]);
   const labels = labelsAll.slice(visOff, win.end);
 
   const W = 720;

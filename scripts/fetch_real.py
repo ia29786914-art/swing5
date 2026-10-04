@@ -59,7 +59,7 @@ def fetch(symbol, interval, range_):
         v = q["volume"][i] or 0
         if o is None or h is None or l is None or c is None:
             continue
-        out.append({"o": round(o, 2), "h": round(h, 2), "l": round(l, 2),
+        out.append({"t": int(t), "o": round(o, 2), "h": round(h, 2), "l": round(l, 2),
                     "c": round(c, 2), "v": int(v)})
     return out
 
