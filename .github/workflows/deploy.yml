@@ -26,13 +26,15 @@ jobs:
         with:
           python-version: "3.12"
 
-      # 抓取最新日線/小時線數據（失敗自動重試，Yahoo 偶爾限流）
+      # 抓取最新日線/小時線數據（失敗自動重試 3 次；全部失敗則用倉庫基準數據部署）
       - name: Fetch latest market data
         run: |
           for i in 1 2 3; do
-            python scripts/fetch_real.py && break
+            if python scripts/fetch_real.py; then exit 0; fi
             echo "retry $i after 30s"; sleep 30
+            git checkout -- src/data/stocks.json
           done
+          echo "::warning::data fetch failed after 3 retries, deploying baseline data"
 
       - uses: actions/setup-node@v4
         with:
