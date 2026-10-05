@@ -1,39 +1,85 @@
-import type { StockAnalysis, StockRaw, Strategy, TradePlan } from "./types";
-import { atr, last, macd, pct, rsi, sma } from "./indicators";
+import type { Bar, StockAnalysis, StockRaw, Strategy, TradePlan } from "./types";
+import { atr, macd, pct, rsi, sma } from "./indicators";
 import { chanAnalysis } from "./hourly";
 
-const lastN = (arr: number[], n: number) => arr.slice(-n);
+/** 信號核心計算：給任意一段日線，產出策略/評分/交易計劃（analyzeStock 與歷史回測共用） */
+export interface SignalCore {
+  close: number;
+  prevClose: number;
+  changePct: number;
+  change20d: number;
+  rsi: number;
+  macdHist: number;
+  macdRising: boolean;
+  ma20: number;
+  ma50: number;
+  aboveMa20: boolean;
+  aboveMa50: boolean;
+  distMa20Pct: number;
+  distHigh20Pct: number;
+  high20: number;
+  volRatio: number;
+  atrPct: number;
+  atrVal: number;
+  strategy: Strategy;
+  signalLabel: string;
+  signalDetail: string;
+  score: number;
+  plan: TradePlan;
+}
 
-export function analyzeStock(raw: StockRaw): StockAnalysis {
-  const bars = raw.bars;
+export interface DailyIndicators {
+  closes: number[];
+  vols: number[];
+  ma20Arr: (number | null)[];
+  ma50Arr: (number | null)[];
+  rsiArr: (number | null)[];
+  macdHistArr: (number | null)[];
+  atrArr: (number | null)[];
+}
+
+/** 每只股票只算一次的全序列指標（O(n)），供回測逐日 O(1) 讀取 */
+export function computeIndicators(bars: Bar[]): DailyIndicators {
   const closes = bars.map((b) => b.c);
   const vols = bars.map((b) => b.v);
-  const n = bars.length;
+  return {
+    closes, vols,
+    ma20Arr: sma(closes, 20),
+    ma50Arr: sma(closes, 50),
+    rsiArr: rsi(closes, 14),
+    macdHistArr: macd(closes).hist,
+    atrArr: atr(bars, 14),
+  };
+}
+
+/**
+ * 以「前 n 根 K 線」為窗口做信號檢測（最後一根為信號日）。
+ * 配合 computeIndicators 可對全歷史逐日重放（回測），與即時信號邏輯完全一致。
+ */
+export function signalAt(bars: Bar[], ind: DailyIndicators, n: number): SignalCore | null {
+  if (n < 60 || n > bars.length) return null;
+  const { closes, vols, ma20Arr, ma50Arr, rsiArr, macdHistArr, atrArr } = ind;
 
   const close = closes[n - 1];
   const prevClose = closes[n - 2];
   const changePct = pct(close, prevClose);
 
-  const ma20Arr = sma(closes, 20);
-  const ma50Arr = sma(closes, 50);
-  const rsiArr = rsi(closes, 14);
-  const { hist: macdHistArr } = macd(closes);
-  const atrArr = atr(bars, 14);
-
-  const ma20 = last(ma20Arr);
-  const ma50 = last(ma50Arr);
-  const rsiVal = last(rsiArr);
-  const macdHist = last(macdHistArr);
+  const ma20 = ma20Arr[n - 1] as number;
+  const ma50 = ma50Arr[n - 1] as number;
+  const rsiVal = rsiArr[n - 1] as number;
+  const macdHist = macdHistArr[n - 1] as number;
   const macdPrev = macdHistArr[n - 4] ?? macdHist;
   const macdRising = macdHist > macdPrev;
-  const atrVal = last(atrArr);
+  const atrVal = atrArr[n - 1] as number;
 
-  const high20 = Math.max(...lastN(bars.map((b) => b.h), 20));
+  let high20 = -Infinity;
+  for (let k = n - 20; k < n; k++) high20 = Math.max(high20, bars[k].h);
   const distHigh20Pct = pct(close, high20);
   const distMa20Pct = pct(close, ma20);
 
-  const avgVol20 = lastN(vols, 21).slice(0, 20).reduce((a, b) => a + b, 0) / 20;
-  const volRatio = vols[n - 1] / avgVol20;
+  let volSum = 0;
+  for (let k = n - 21; k < n - 1; k++) volSum += vols[k];
+  const volRatio = vols[n - 1] / (volSum / 20);
 
   const change20d = pct(close, closes[n - 21]);
 
@@ -131,12 +177,23 @@ export function analyzeStock(raw: StockRaw): StockAnalysis {
   };
 
   return {
-    raw, close, changePct, change20d, rsi: rsiVal, macdHist, macdRising,
-    ma20, ma50, aboveMa20: close > ma20, aboveMa50: close > ma50,
-    distMa20Pct, distHigh20Pct, high20, volRatio, atrPct,
-    sector: raw.sector, strategy, signalLabel, signalDetail, score, plan,
-    chan: chanAnalysis(raw.bars),
+    close, prevClose, changePct, change20d,
+    rsi: rsiVal, macdHist, macdRising,
+    ma20, ma50,
+    aboveMa20: close > ma20, aboveMa50: close > ma50,
+    distMa20Pct, distHigh20Pct, high20, volRatio, atrPct, atrVal,
+    strategy, signalLabel, signalDetail, score, plan,
   };
+}
+
+export function computeSignal(bars: Bar[]): SignalCore | null {
+  return signalAt(bars, computeIndicators(bars), bars.length);
+}
+
+export function analyzeStock(raw: StockRaw): StockAnalysis {
+  const core = computeSignal(raw.bars)!;
+  const { atrVal, ...rest } = core;
+  return { raw, ...rest, sector: raw.sector, chan: chanAnalysis(raw.bars) };
 }
 
 export interface MarketStats {

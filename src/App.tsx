@@ -12,6 +12,7 @@ import { StockSheet } from "@/components/StockSheet";
 import { HourlyTable } from "@/components/HourlyTable";
 import { HourlySheet } from "@/components/HourlySheet";
 import { Journal } from "@/components/Journal";
+import { Performance } from "@/components/Performance";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -174,6 +175,7 @@ export default function App() {
             <TabsTrigger value="screener">日线雷达</TabsTrigger>
             <TabsTrigger value="watchlist">自选股 ({watchlist.length})</TabsTrigger>
             <TabsTrigger value="journal">交易日志 ({journal.filter((e) => e.status === "open").length})</TabsTrigger>
+            <TabsTrigger value="performance">表現追踪</TabsTrigger>
           </TabsList>
 
           <TabsContent value="hourly" className="space-y-4">
@@ -217,6 +219,10 @@ export default function App() {
 
           <TabsContent value="journal">
             <Journal entries={journal} analyses={byTicker} onClose={closeTrade} onRemove={removeTrade} />
+          </TabsContent>
+
+          <TabsContent value="performance">
+            <Performance stocks={stocks} />
           </TabsContent>
         </Tabs>
       </div>
