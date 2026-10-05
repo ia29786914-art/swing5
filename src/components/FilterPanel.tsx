@@ -3,7 +3,9 @@ import { STRATEGY_META } from "@/lib/engine";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search } from "lucide-react";
 
 export interface Filters {
   strategy: Strategy | "all";
@@ -13,6 +15,7 @@ export interface Filters {
   rsiMin: number;
   rsiMax: number;
   sector: string;
+  query: string;
 }
 
 interface Props {
@@ -73,7 +76,7 @@ export function FilterPanel({ filters, onChange, sectors, count }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs text-zinc-500">行业</span>
         <Select value={filters.sector} onValueChange={(v) => onChange({ ...filters, sector: v })}>
           <SelectTrigger className="w-40 h-8 bg-zinc-950 border-zinc-700 text-xs">
@@ -88,6 +91,15 @@ export function FilterPanel({ filters, onChange, sectors, count }: Props) {
             ))}
           </SelectContent>
         </Select>
+        <div className="relative">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+          <Input
+            value={filters.query}
+            onChange={(e) => onChange({ ...filters, query: e.target.value })}
+            placeholder="搜索代碼或名稱，如 AAPL / 蘋果"
+            className="w-60 h-8 pl-8 bg-zinc-950 border-zinc-700 text-xs placeholder:text-zinc-600"
+          />
+        </div>
         <span className="ml-auto text-xs text-zinc-500">
           命中 <span className="text-sky-400 font-semibold">{count}</span> 只
         </span>

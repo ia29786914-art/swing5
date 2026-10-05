@@ -44,6 +44,7 @@ export default function App() {
     rsiMin: 5,
     rsiMax: 95,
     sector: "all",
+    query: "",
   });
   const [watchlist, setWatchlist] = useLocalStorage<string[]>("swing5_watchlist", []);
   const [journal, setJournal] = useLocalStorage<JournalEntry[]>("swing5_journal", []);
@@ -52,18 +53,18 @@ export default function App() {
 
   const hourlyAnalyses = useMemo(() => stocks.map(analyzeHourly), [stocks]);
 
-  const filtered = useMemo(
-    () =>
-      analyses
-        .filter((s) => filters.strategy === "all" || s.strategy === filters.strategy)
-        .filter((s) => s.score >= filters.minScore)
-        .filter((s) => s.close <= filters.maxPrice)
-        .filter((s) => s.volRatio >= filters.minVolRatio)
-        .filter((s) => s.rsi >= filters.rsiMin && s.rsi <= filters.rsiMax)
-        .filter((s) => filters.sector === "all" || s.sector === filters.sector)
-        .sort((a, b) => b.score - a.score),
-    [analyses, filters]
-  );
+  const filtered = useMemo(() => {
+    const q = filters.query.trim().toLowerCase();
+    return analyses
+      .filter((s) => filters.strategy === "all" || s.strategy === filters.strategy)
+      .filter((s) => s.score >= filters.minScore)
+      .filter((s) => s.close <= filters.maxPrice)
+      .filter((s) => s.volRatio >= filters.minVolRatio)
+      .filter((s) => s.rsi >= filters.rsiMin && s.rsi <= filters.rsiMax)
+      .filter((s) => filters.sector === "all" || s.sector === filters.sector)
+      .filter((s) => !q || s.raw.ticker.toLowerCase().includes(q) || s.raw.name.toLowerCase().includes(q))
+      .sort((a, b) => b.score - a.score);
+  }, [analyses, filters]);
 
   const signalCount = useMemo(() => {
     const c = { breakout: 0, pullback: 0, reversal: 0, momentum: 0 };
@@ -134,7 +135,7 @@ export default function App() {
               <span className="ml-3 text-sm font-normal text-zinc-500">美股短线选股工具 · 持仓纪律 ≤ 5 天</span>
             </h1>
             <p className="text-xs text-zinc-600 mt-1">
-              真實行情 · 數據源 Yahoo Finance · 日線近 1 年 / 小時線近 3 個月 · 覆蓋納指100 + 道指30 成份股 · 信號僅為技術演示，非投資建議
+              真實行情 · 數據源 Yahoo Finance · 日線近 3 年 / 小時線近 1 年 · 覆蓋納指100 + 道指30 成份股 · 信號僅為技術演示，非投資建議
             </p>
           </div>
           <div className="flex gap-2">
