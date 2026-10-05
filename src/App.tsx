@@ -14,7 +14,8 @@ import { HourlySheet } from "@/components/HourlySheet";
 import { Journal } from "@/components/Journal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Activity, Gauge, Flame } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { TrendingUp, Activity, Gauge, Flame, Search } from "lucide-react";
 
 function Stat({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string }) {
   return (
@@ -50,6 +51,7 @@ export default function App() {
   const [journal, setJournal] = useLocalStorage<JournalEntry[]>("swing5_journal", []);
   const [selected, setSelected] = useState<StockAnalysis | null>(null);
   const [hourlySelected, setHourlySelected] = useState<HourlyAnalysis | null>(null);
+  const [hourlyQuery, setHourlyQuery] = useState("");
 
   const hourlyAnalyses = useMemo(() => stocks.map(analyzeHourly), [stocks]);
 
@@ -119,10 +121,13 @@ export default function App() {
     return { chan, squeezeFire, squeezed, macdGold };
   }, [hourlyAnalyses]);
 
-  const hourlyRows = useMemo(
-    () => hourlyAnalyses.filter((h) => h.score >= 30).sort((a, b) => b.score - a.score),
-    [hourlyAnalyses]
-  );
+  const hourlyRows = useMemo(() => {
+    const q = hourlyQuery.trim().toLowerCase();
+    return hourlyAnalyses
+      .filter((h) => h.score >= 30)
+      .filter((h) => !q || h.raw.ticker.toLowerCase().includes(q) || h.raw.name.toLowerCase().includes(q))
+      .sort((a, b) => b.score - a.score);
+  }, [hourlyAnalyses, hourlyQuery]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -178,6 +183,15 @@ export default function App() {
               <Badge variant="outline" className="border-sky-500/30 text-sky-300">Squeeze 释放 {hourlySignals.squeezeFire}</Badge>
               <Badge variant="outline" className="border-amber-500/30 text-amber-300">挤压蓄势 {hourlySignals.squeezed}</Badge>
               <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">MACD 金叉 {hourlySignals.macdGold}</Badge>
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                <Input
+                  value={hourlyQuery}
+                  onChange={(e) => setHourlyQuery(e.target.value)}
+                  placeholder="搜索代碼或名稱"
+                  className="w-52 h-7 pl-8 bg-zinc-950 border-zinc-700 text-xs placeholder:text-zinc-600"
+                />
+              </div>
               <span className="ml-auto text-zinc-600">缠论底背驰=一买 · 回试不破=二买 · 止损取笔低点 · 持仓 1-3 天 · 评分≥45 为强信号，30-44 为观察池</span>
             </div>
             <HourlyTable rows={hourlyRows} onSelect={setHourlySelected} />
