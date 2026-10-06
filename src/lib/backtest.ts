@@ -128,6 +128,8 @@ export interface PerformanceReport {
   byStrategy: Partial<Record<Exclude<Strategy, "none">, GroupStat>>;
   byYear: Record<string, GroupStat>;
   recent: TrackedSignal[]; // 最近了結的信號（新→舊）
+  /** 累計 R 曲線：按了結日聚合（同日多筆先求和再累計） */
+  equity: { date: string; cumR: number }[];
 }
 
 export function buildReport(trades: TrackedSignal[]): PerformanceReport {
@@ -148,10 +150,21 @@ export function buildReport(trades: TrackedSignal[]): PerformanceReport {
     .filter((t) => t.outcome !== "open")
     .sort((a, b) => (a.date > b.date ? -1 : 1))
     .slice(0, 40);
+  const equity: { date: string; cumR: number }[] = [];
+  let cum = 0;
+  trades
+    .filter((t) => t.outcome !== "open" && t.date)
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+    .forEach((t) => {
+      cum += t.rMultiple;
+      const lastPt = equity[equity.length - 1];
+      if (lastPt && lastPt.date === t.date) lastPt.cumR = cum;
+      else equity.push({ date: t.date, cumR: cum });
+    });
   return {
     overall: statOf(trades),
     openCount: trades.filter((t) => t.outcome === "open").length,
-    byStrategy, byYear, recent,
+    byStrategy, byYear, recent, equity,
   };
 }
 
