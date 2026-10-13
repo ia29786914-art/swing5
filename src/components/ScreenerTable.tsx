@@ -1,15 +1,56 @@
+import { useMemo, useState } from "react";
 import type { StockAnalysis } from "@/lib/types";
 import { STRATEGY_META } from "@/lib/engine";
 import { fmtPct, fmtPrice } from "@/lib/indicators";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Star } from "lucide-react";
+import { Star, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 interface Props {
   rows: StockAnalysis[];
   watchlist: string[];
   onToggleWatch: (t: string) => void;
   onSelect: (s: StockAnalysis) => void;
+}
+
+type SortKey = "ticker" | "close" | "change" | "change20" | "score" | "rsi" | "vol" | "atr" | "rr" | "hold";
+
+const ACCESSORS: Record<SortKey, (s: StockAnalysis) => number | string> = {
+  ticker: (s) => s.raw.ticker,
+  close: (s) => s.close,
+  change: (s) => s.changePct,
+  change20: (s) => s.change20d,
+  score: (s) => s.score,
+  rsi: (s) => s.rsi,
+  vol: (s) => s.volRatio,
+  atr: (s) => s.atrPct,
+  rr: (s) => s.plan.rr,
+  hold: (s) => s.plan.holdDays,
+};
+
+function Th({ label, k, sort, onSort, className }: {
+  label: string;
+  k: SortKey;
+  sort: { key: SortKey; dir: "asc" | "desc" } | null;
+  onSort: (k: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort?.key === k;
+  return (
+    <TableHead
+      className={`text-zinc-500 text-xs cursor-pointer select-none hover:text-zinc-300 ${className ?? ""}`}
+      onClick={() => onSort(k)}
+    >
+      <span className="inline-flex items-center gap-0.5">
+        {label}
+        {active ? (
+          sort.dir === "asc" ? <ArrowUp size={10} className="text-sky-400" /> : <ArrowDown size={10} className="text-sky-400" />
+        ) : (
+          <ArrowUpDown size={10} className="opacity-25" />
+        )}
+      </span>
+    </TableHead>
+  );
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -25,6 +66,22 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 export function ScreenerTable({ rows, watchlist, onToggleWatch, onSelect }: Props) {
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+
+  const sorted = useMemo(() => {
+    if (!sort) return rows;
+    const get = ACCESSORS[sort.key];
+    return [...rows].sort((a, b) => {
+      const va = get(a);
+      const vb = get(b);
+      const c = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
+      return sort.dir === "asc" ? c : -c;
+    });
+  }, [rows, sort]);
+
+  const onSort = (k: SortKey) =>
+    setSort((prev) => (prev?.key === k ? { key: k, dir: prev.dir === "asc" ? "desc" : "asc" } : { key: k, dir: "desc" }));
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 py-16 text-center text-sm text-zinc-500">
@@ -38,22 +95,22 @@ export function ScreenerTable({ rows, watchlist, onToggleWatch, onSelect }: Prop
         <TableHeader>
           <TableRow className="border-zinc-800 hover:bg-transparent">
             <TableHead className="text-zinc-500 text-xs w-10"></TableHead>
-            <TableHead className="text-zinc-500 text-xs">代码 / 名称</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-right">现价</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-right">今日</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-right">20日</TableHead>
+            <Th label="代码 / 名称" k="ticker" sort={sort} onSort={onSort} />
+            <Th label="现价" k="close" sort={sort} onSort={onSort} className="text-right" />
+            <Th label="今日" k="change" sort={sort} onSort={onSort} className="text-right" />
+            <Th label="20日" k="change20" sort={sort} onSort={onSort} className="text-right" />
             <TableHead className="text-zinc-500 text-xs text-center">信号</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-center">评分</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-right">RSI</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-right">量比</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-right">ATR%</TableHead>
+            <Th label="评分" k="score" sort={sort} onSort={onSort} className="text-center" />
+            <Th label="RSI" k="rsi" sort={sort} onSort={onSort} className="text-right" />
+            <Th label="量比" k="vol" sort={sort} onSort={onSort} className="text-right" />
+            <Th label="ATR%" k="atr" sort={sort} onSort={onSort} className="text-right" />
             <TableHead className="text-zinc-500 text-xs text-right">入场 / 止损 / 目标</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-center">盈亏比</TableHead>
-            <TableHead className="text-zinc-500 text-xs text-center">持仓≤</TableHead>
+            <Th label="盈亏比" k="rr" sort={sort} onSort={onSort} className="text-center" />
+            <Th label="持仓≤" k="hold" sort={sort} onSort={onSort} className="text-center" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((s) => (
+          {sorted.map((s) => (
             <TableRow
               key={s.raw.ticker}
               className="border-zinc-800/70 hover:bg-zinc-800/40 cursor-pointer"
