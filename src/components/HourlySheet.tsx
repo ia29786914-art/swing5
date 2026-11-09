@@ -59,7 +59,7 @@ export function HourlySheet({ h, onClose }: Props) {
         <div className="space-y-5">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
             <div className="flex items-center justify-between mb-1 px-1">
-              <span className="text-[11px] text-zinc-500">小时线 · 近 150 根</span>
+              <span className="text-[11px] text-zinc-500">小时线 · 全部 {h.bars.length} 根（近 1 年）</span>
               <div className="flex gap-3 text-[11px] flex-wrap">
                 <span className="text-amber-500">— BB(20,2)</span>
                 <span className="text-sky-400">— KC(20,1.5ATR)</span>
@@ -71,7 +71,7 @@ export function HourlySheet({ h, onClose }: Props) {
                 <span className="text-teal-400">卖▲</span>
               </div>
             </div>
-            <HourlyChart bars={h.bars} showBars={150} chan={h.chan} height={600} />
+            <HourlyChart bars={h.bars} showBars={h.bars.length} chan={h.chan} height={600} />
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
