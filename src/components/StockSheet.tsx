@@ -94,7 +94,7 @@ export function StockSheet({ stock, onClose, onAddToJournal }: Props) {
                   </button>
                 </div>
                 <span className="text-[11px] text-zinc-500">
-                  {view === "daily" ? `近 ${Math.min(250, stock.raw.bars.length)} 个交易日（可縮放至 3 年）` : `近 ${Math.min(200, stock.raw.hourly.length)} 个小时（可縮放至 1 年）`}
+                  {view === "daily" ? `全部 ${stock.raw.bars.length} 根日線 · 近 3 年（可縮放 / 平移）` : `近 ${Math.min(200, stock.raw.hourly.length)} 个小时（可縮放至 1 年）`}
                 </span>
               </div>
               <div className="flex gap-3 text-[11px] flex-wrap">
@@ -108,7 +108,7 @@ export function StockSheet({ stock, onClose, onAddToJournal }: Props) {
               </div>
             </div>
             {view === "daily" ? (
-              <CandleChart bars={stock.raw.bars} showBars={250} entry={p.rr > 0 ? p.entry : undefined} stop={p.rr > 0 ? p.stop : undefined} target={p.rr > 0 ? p.target : undefined} height={480} chan={stock.chan} />
+              <CandleChart bars={stock.raw.bars} showBars={stock.raw.bars.length} entry={p.rr > 0 ? p.entry : undefined} stop={p.rr > 0 ? p.stop : undefined} target={p.rr > 0 ? p.target : undefined} height={480} chan={stock.chan} />
             ) : hourly ? (
               <HourlyChart bars={hourly.bars} showBars={200} chan={hourly.chan} height={480} />
             ) : null}
